@@ -48,5 +48,7 @@ Eine Jenkins-Pipeline (`Jenkinsfile`) ist analog zum Referenzprojekt aufgebaut:
 3. Docker Build + Tag
 4. Push nach ECR
 5. Lambda Create/Update aus Container-Image
+6. Lambda Function URL automatisch anlegen/aktualisieren (Auth `NONE`)
+7. Oeffentliche Berechtigung (`lambda:InvokeFunctionUrl`) idempotent setzen
 
-Die zentralen Variablen (`AWS_REGION`, `ECR_REGISTRY`, `ECR_REPOSITORY`, `LAMBDA_FUNCTION_NAME`, `LAMBDA_ROLE_ARN`) koennen in der Pipeline angepasst werden.
+Die zentralen Variablen (`AWS_REGION`, `ECR_REGISTRY`, `ECR_REPOSITORY`, `LAMBDA_FUNCTION_NAME`, `LAMBDA_ROLE_ARN`, `FUNCTION_URL_AUTH_TYPE`, `FUNCTION_URL_PERMISSION_SID`) koennen in der Pipeline angepasst werden.

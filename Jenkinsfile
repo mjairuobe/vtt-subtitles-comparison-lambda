@@ -111,12 +111,15 @@ pipeline {
                     set -e
 
                     if [ "${ADD_PERMISSION_EXIT_CODE}" -ne 0 ]; then
-                        if printf '%s' "${ADD_PERMISSION_OUTPUT}" | rg -q "ResourceConflictException"; then
-                            echo "Function URL permission already exists."
-                        else
-                            printf '%s\n' "${ADD_PERMISSION_OUTPUT}"
-                            exit "${ADD_PERMISSION_EXIT_CODE}"
-                        fi
+                        case "${ADD_PERMISSION_OUTPUT}" in
+                            *ResourceConflictException*)
+                                echo "Function URL permission already exists."
+                                ;;
+                            *)
+                                printf '%s\n' "${ADD_PERMISSION_OUTPUT}"
+                                exit "${ADD_PERMISSION_EXIT_CODE}"
+                                ;;
+                        esac
                     else
                         echo "Function URL permission created."
                     fi

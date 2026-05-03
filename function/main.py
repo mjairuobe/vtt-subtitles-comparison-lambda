@@ -38,117 +38,428 @@ HOME_PAGE_HTML = """<!doctype html>
     <style>
       :root {
         color-scheme: light dark;
+        --bg: #0b1220;
+        --panel: #131c2f;
+        --panel-soft: #1a2740;
+        --border: #334155;
+        --text: #f8fafc;
+        --muted: #cbd5e1;
+        --accent: #2563eb;
+        --ok: #16a34a;
+        --warn: #f59e0b;
+      }
+      * {
+        box-sizing: border-box;
       }
       body {
         margin: 0;
         font-family: Arial, sans-serif;
-        background: #111827;
-        color: #f9fafb;
+        background: radial-gradient(circle at top, #16213a, var(--bg) 40%);
+        color: var(--text);
       }
       main {
-        max-width: 900px;
+        max-width: 1080px;
         margin: 0 auto;
-        padding: 2rem 1rem 3rem;
+        padding: 1.5rem 1rem 3rem;
       }
       .card {
-        border: 1px solid #334155;
+        border: 1px solid var(--border);
         border-radius: 12px;
-        padding: 1.25rem;
-        background: #1f2937;
+        padding: 1rem;
+        background: var(--panel);
       }
-      h1 {
-        margin-top: 0;
-        margin-bottom: 0.5rem;
-        font-size: 1.75rem;
-      }
-      form {
+      .stack {
         display: grid;
         gap: 1rem;
-        margin-top: 1rem;
+      }
+      h1,
+      h2,
+      h3 {
+        margin-top: 0;
       }
       p,
       li,
       label {
-        line-height: 1.5;
+        line-height: 1.45;
+      }
+      .hint {
+        color: var(--muted);
+      }
+      .grid-2 {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .upload-grid {
+        display: grid;
+        gap: 1rem;
+        margin-top: 0.5rem;
+      }
+      .upload-field {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.8rem;
+        background: var(--panel-soft);
       }
       input[type="file"] {
         width: 100%;
-        box-sizing: border-box;
+        margin-top: 0.35rem;
         border: 1px solid #475569;
         border-radius: 8px;
-        padding: 0.65rem 0.75rem;
+        padding: 0.6rem;
         background: #0f172a;
-        color: #f8fafc;
+        color: var(--text);
+      }
+      .actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
       }
       button {
         border: 0;
         border-radius: 8px;
-        padding: 0.75rem 1rem;
-        background: #2563eb;
+        padding: 0.7rem 0.95rem;
+        background: var(--accent);
         color: #fff;
         font-weight: 700;
         cursor: pointer;
       }
-      .hint {
+      button.secondary {
+        background: #334155;
+      }
+      button[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .status {
+        min-height: 1.35rem;
+        color: var(--muted);
+      }
+      .status.error {
+        color: #fda4af;
+      }
+      .status.ok {
+        color: #86efac;
+      }
+      .metric-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+      .metric-table th,
+      .metric-table td {
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        padding: 0.45rem 0.3rem;
+      }
+      .tag {
+        display: inline-block;
+        border-radius: 999px;
+        padding: 0.14rem 0.5rem;
+        font-size: 0.8rem;
+      }
+      .tag.pos {
+        background: rgba(22, 163, 74, 0.22);
+        color: #86efac;
+      }
+      .tag.neg {
+        background: rgba(239, 68, 68, 0.22);
+        color: #fda4af;
+      }
+      .tag.neu {
+        background: rgba(148, 163, 184, 0.2);
         color: #cbd5e1;
       }
-      .box {
-        border: 1px solid #334155;
-        border-radius: 8px;
+      .list-box {
+        border: 1px solid var(--border);
         background: #0f172a;
-        padding: 1rem;
+        border-radius: 8px;
+        padding: 0.65rem;
+        max-height: 220px;
+        overflow: auto;
       }
-      code {
-        background: #111827;
-        border-radius: 4px;
-        padding: 0.1rem 0.35rem;
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      @media (max-width: 820px) {
+        .grid-2 {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
   <body>
-    <main>
-      <section class="card">
-        <h1>VTT Versionsvergleich</h1>
-        <p>
-          Diese statische Seite beschreibt das Tool und bietet ein Uploadformular fuer
-          den Vergleich von Untertitelversionen.
-        </p>
-        <div class="box">
-          <p>
-            Lade zwei Gruppen hoch: <strong>aeltere Version</strong> und
-            <strong>aktuellere Version</strong>.
-          </p>
-          <ul>
-            <li>Akzeptierte Formate: <code>.vtt</code>, <code>.txt</code>, <code>.zip</code></li>
-            <li>
-              ZIP-Dateien duerfen mehrere VTT/TXT enthalten und werden jeweils als
-              eine logische Datei innerhalb der Gruppe ausgewertet.
-            </li>
-            <li>Verglichen werden nur Start-/Endzeiten der Timestamps.</li>
-            <li>
-              Woerter werden pro logischer Datei ausgewertet und als
-              <code>sum</code>, <code>min</code>, <code>max</code>, <code>avg</code>
-              zusammengefasst.
-            </li>
-          </ul>
-        </div>
-        <form id="compare-form" method="post" enctype="multipart/form-data">
-          <label>
-            Aeltere Version (older_files):
-            <input name="older_files" type="file" accept=".vtt,.txt,.zip" multiple required />
-          </label>
-          <label>
-            Neuere Version (newer_files):
-            <input name="newer_files" type="file" accept=".vtt,.txt,.zip" multiple required />
-          </label>
-          <button type="submit">Vergleich ausfuehren</button>
-        </form>
+    <main class="stack">
+      <section class="card stack">
+        <h1>VTT Vergleichsfrontend</h1>
         <p class="hint">
-          Das Formular sendet per <code>POST</code> an denselben Endpoint.
-          Die Antwort erfolgt als JSON.
+          Standardansicht ist die UI. Du kannst hier zwei Versionen direkt vergleichen
+          und das JSON jederzeit herunterladen.
         </p>
+        <ul>
+          <li>Felder: <code>older_files</code> und <code>newer_files</code></li>
+          <li>Formate: <code>.vtt</code>, <code>.txt</code>, <code>.zip</code></li>
+          <li>Timestamps werden ueber Start/Ende verglichen</li>
+          <li>Gruppenvergleich fuer <code>sum/min/max/avg</code> ist enthalten</li>
+          <li>Leere Dateien werden explizit gelistet</li>
+        </ul>
+      </section>
+
+      <section class="card stack">
+        <h2>Upload</h2>
+        <form id="compare-form" method="post" enctype="multipart/form-data">
+          <div class="upload-grid">
+            <label class="upload-field">
+              Aeltere Version (older_files)
+              <input name="older_files" type="file" accept=".vtt,.txt,.zip" multiple required />
+            </label>
+            <label class="upload-field">
+              Neuere Version (newer_files)
+              <input name="newer_files" type="file" accept=".vtt,.txt,.zip" multiple required />
+            </label>
+          </div>
+          <div class="actions">
+            <button id="submit-button" type="submit">Vergleich anzeigen</button>
+            <button id="download-template-json" class="secondary" type="button">
+              Beispiel-JSON herunterladen
+            </button>
+            <button id="download-result-json" class="secondary" type="button" disabled>
+              Ergebnis-JSON herunterladen
+            </button>
+          </div>
+        </form>
+        <p id="status" class="status"></p>
+        <noscript>
+          <p class="hint">
+            Ohne JavaScript wird das Formular normal abgeschickt und die JSON-Antwort
+            direkt im Browser angezeigt.
+          </p>
+        </noscript>
+      </section>
+
+      <section class="card stack" id="comparison-panel">
+        <h2>Vergleich</h2>
+        <div id="comparison-content" class="hint">
+          Noch kein Vergleich ausgefuehrt.
+        </div>
       </section>
     </main>
+
+    <script>
+      (() => {
+        const form = document.getElementById("compare-form");
+        const submitButton = document.getElementById("submit-button");
+        const statusNode = document.getElementById("status");
+        const resultDownloadButton = document.getElementById("download-result-json");
+        const templateDownloadButton = document.getElementById("download-template-json");
+        const comparisonContent = document.getElementById("comparison-content");
+        let lastResult = null;
+
+        const downloadJson = (filename, value) => {
+          const blob = new Blob([JSON.stringify(value, null, 2)], {
+            type: "application/json;charset=utf-8",
+          });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        };
+
+        const escapeHtml = (value) =>
+          String(value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+
+        const formatValue = (value) => {
+          if (typeof value === "number") {
+            return Number.isInteger(value) ? String(value) : value.toFixed(3);
+          }
+          return String(value);
+        };
+
+        const deltaTag = (delta) => {
+          if (delta > 0) {
+            return `<span class="tag pos">+${formatValue(delta)}</span>`;
+          }
+          if (delta < 0) {
+            return `<span class="tag neg">${formatValue(delta)}</span>`;
+          }
+          return `<span class="tag neu">${formatValue(delta)}</span>`;
+        };
+
+        const listItems = (items, emptyText) => {
+          if (!items || items.length === 0) {
+            return `<p class="hint">${escapeHtml(emptyText)}</p>`;
+          }
+          return `<ul class="mono">${items
+            .map((item) => `<li>${escapeHtml(item)}</li>`)
+            .join("")}</ul>`;
+        };
+
+        const renderGroupDetails = (title, group) => {
+          const safeGroup = {
+            uploaded_file_count: group?.uploaded_file_count ?? 0,
+            expanded_vtt_file_count: group?.expanded_vtt_file_count ?? 0,
+            empty_files: group?.empty_files ?? [],
+            logical_file_names: group?.logical_file_names ?? [],
+          };
+          return `
+          <section class="card stack">
+            <h3>${title}</h3>
+            <table class="metric-table">
+              <tbody>
+                <tr><th>Hochgeladene Dateien</th><td>${safeGroup.uploaded_file_count}</td></tr>
+                <tr><th>Expandierte VTT-Dateien</th><td>${safeGroup.expanded_vtt_file_count}</td></tr>
+                <tr><th>Leere Dateien</th><td>${safeGroup.empty_files.length}</td></tr>
+              </tbody>
+            </table>
+            <div>
+              <h4>Dateinamen</h4>
+              <div class="list-box">${listItems(safeGroup.logical_file_names, "Keine Dateien")}</div>
+            </div>
+            <div>
+              <h4>Leere Dateien</h4>
+              <div class="list-box">${listItems(safeGroup.empty_files, "Keine leeren Dateien")}</div>
+            </div>
+          </section>
+        `;
+        };
+
+        const renderComparison = (payload) => {
+          const agg = payload.word_aggregate_comparison || {};
+          const ts = payload.summary || {};
+
+          comparisonContent.innerHTML = `
+            <section class="stack">
+              <h3>Uebersicht</h3>
+              <table class="metric-table">
+                <thead>
+                  <tr><th>Metrik</th><th>Aelter</th><th>Neuer</th><th>Delta</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th>Timestamp Count</th>
+                    <td>${ts.timestamp_count?.older ?? 0}</td>
+                    <td>${ts.timestamp_count?.newer ?? 0}</td>
+                    <td>${deltaTag((ts.timestamp_count?.newer ?? 0) - (ts.timestamp_count?.older ?? 0))}</td>
+                  </tr>
+                  <tr>
+                    <th>Unique Timestamps</th>
+                    <td>${ts.unique_timestamp_count?.older ?? 0}</td>
+                    <td>${ts.unique_timestamp_count?.newer ?? 0}</td>
+                    <td>${deltaTag((ts.unique_timestamp_count?.newer ?? 0) - (ts.unique_timestamp_count?.older ?? 0))}</td>
+                  </tr>
+                  <tr>
+                    <th>Entfernte Timestamps</th>
+                    <td colspan="3">${ts.removed_timestamps_count ?? 0}</td>
+                  </tr>
+                  <tr>
+                    <th>Hinzugefuegte Timestamps</th>
+                    <td colspan="3">${ts.added_timestamps_count ?? 0}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+
+            <section class="stack">
+              <h3>Aggregatvergleich (sum/min/max/avg)</h3>
+              <table class="metric-table">
+                <thead>
+                  <tr><th>Aggregat</th><th>Aelter</th><th>Neuer</th><th>Delta</th></tr>
+                </thead>
+                <tbody>
+                  ${["sum", "min", "max", "avg"].map((name) => `
+                    <tr>
+                      <th>${name}</th>
+                      <td>${formatValue(agg[name]?.older ?? 0)}</td>
+                      <td>${formatValue(agg[name]?.newer ?? 0)}</td>
+                      <td>${deltaTag(agg[name]?.delta ?? 0)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </section>
+
+            <section class="grid-2">
+              ${renderGroupDetails("Aeltere Gruppe", payload.older_group || {})}
+              ${renderGroupDetails("Neuere Gruppe", payload.newer_group || {})}
+            </section>
+
+            <section class="grid-2">
+              <div class="card stack">
+                <h3>Weggefallene Timestamps</h3>
+                <div class="list-box">${listItems(payload.removed_timestamps, "Keine")}</div>
+              </div>
+              <div class="card stack">
+                <h3>Hinzugefuegte Timestamps</h3>
+                <div class="list-box">${listItems(payload.added_timestamps, "Keine")}</div>
+              </div>
+            </section>
+          `;
+        };
+
+        templateDownloadButton.addEventListener("click", () => {
+          const example = {
+            request_fields: ["older_files", "newer_files"],
+            description: "Beispielhafte Struktur fuer Request/Response.",
+            response_fields: [
+              "summary.timestamp_count",
+              "summary.unique_timestamp_count",
+              "summary.removed_timestamps_count",
+              "summary.added_timestamps_count",
+              "word_aggregate_comparison",
+              "older_group",
+              "newer_group",
+              "removed_timestamps",
+              "added_timestamps",
+            ],
+          };
+          downloadJson("vtt-compare-template.json", example);
+        });
+
+        resultDownloadButton.addEventListener("click", () => {
+          if (!lastResult) {
+            return;
+          }
+          downloadJson("vtt-compare-result.json", lastResult);
+        });
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          statusNode.className = "status";
+          statusNode.textContent = "Vergleich laeuft...";
+          submitButton.disabled = true;
+
+          try {
+            const response = await fetch(window.location.pathname, {
+              method: "POST",
+              body: new FormData(form),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+              throw new Error(payload.error || `Fehler (${response.status})`);
+            }
+            lastResult = payload;
+            resultDownloadButton.disabled = false;
+            renderComparison(payload);
+            statusNode.className = "status ok";
+            statusNode.textContent = "Vergleich erfolgreich aktualisiert.";
+          } catch (error) {
+            statusNode.className = "status error";
+            statusNode.textContent = `Fehler: ${error.message}`;
+          } finally {
+            submitButton.disabled = false;
+          }
+        });
+      })();
+    </script>
   </body>
 </html>
 """

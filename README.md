@@ -38,7 +38,11 @@ python -m unittest discover -s tests -p "test_*.py"
 ## Lambda Handler
 
 - Entry Point: `function.main.handler`
-- `GET`: liefert ein simples Upload-Frontend
+- `GET`: liefert ein Vergleichs-Frontend (HTML/CSS + JS) mit:
+  - Upload der beiden Gruppen
+  - visueller Gegenueberstellung der Ergebnisse
+  - optionalem Download eines Beispiel-JSONs
+  - optionalem Download des letzten Vergleichs-JSONs
 - `POST`: verarbeitet Multipart-Uploads und gibt JSON mit den Vergleichsergebnissen zurueck
 - `OPTIONS`: CORS Preflight
 

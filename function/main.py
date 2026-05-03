@@ -51,6 +51,12 @@ HOME_PAGE_HTML = """<!doctype html>
       * {
         box-sizing: border-box;
       }
+      html,
+      body {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+      }
       body {
         margin: 0;
         font-family: Arial, sans-serif;
@@ -58,17 +64,20 @@ HOME_PAGE_HTML = """<!doctype html>
         color: var(--text);
       }
       main {
+        width: 100%;
         max-width: 1080px;
         margin: 0 auto;
         padding: 1.5rem 1rem 3rem;
       }
       .card {
+        min-width: 0;
         border: 1px solid var(--border);
         border-radius: 12px;
         padding: 1rem;
         background: var(--panel);
       }
       .stack {
+        min-width: 0;
         display: grid;
         gap: 1rem;
       }
@@ -90,12 +99,16 @@ HOME_PAGE_HTML = """<!doctype html>
         gap: 1rem;
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+      .grid-2 > * {
+        min-width: 0;
+      }
       .upload-grid {
         display: grid;
         gap: 1rem;
         margin-top: 0.5rem;
       }
       .upload-field {
+        min-width: 0;
         border: 1px solid var(--border);
         border-radius: 10px;
         padding: 0.8rem;
@@ -171,6 +184,7 @@ HOME_PAGE_HTML = """<!doctype html>
         color: #cbd5e1;
       }
       .list-box {
+        min-width: 0;
         border: 1px solid var(--border);
         background: #0f172a;
         border-radius: 8px;
@@ -180,6 +194,13 @@ HOME_PAGE_HTML = """<!doctype html>
       }
       .mono {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .mono li,
+      code {
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
       @media (max-width: 820px) {
         .grid-2 {

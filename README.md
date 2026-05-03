@@ -25,7 +25,8 @@ Die API liefert:
 - weggefallene Timestamps
 - hinzugefuegte Timestamps
 - Woerter-Statistik pro Gruppe (`sum`, `min`, `max`, `avg`) **pro logischer Datei**
-- Delta zwischen neuer und alter Version fuer die Woerter-Statistik
+- Gruppenvergleich der Aggregatwerte ueber `word_stats_comparison` mit
+  `sum/min/max/avg` jeweils als `older`, `newer`, `delta`
 - Informationen zu leeren Dateien (`empty_files`, `empty_logical_file_names`, `empty_files_count`)
 
 ## Lokales Testen

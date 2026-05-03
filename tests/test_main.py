@@ -103,6 +103,12 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(4, payload["newer_group"]["word_stats"]["sum"])
         self.assertEqual([4], payload["older_group"]["file_word_counts"])
         self.assertEqual([4], payload["newer_group"]["file_word_counts"])
+        self.assertEqual(4, payload["word_aggregate_comparison"]["sum"]["older"])
+        self.assertEqual(4, payload["word_aggregate_comparison"]["sum"]["newer"])
+        self.assertEqual(0, payload["word_aggregate_comparison"]["sum"]["delta"])
+        self.assertEqual(4.0, payload["word_aggregate_comparison"]["avg"]["older"])
+        self.assertEqual(4.0, payload["word_aggregate_comparison"]["avg"]["newer"])
+        self.assertEqual(0.0, payload["word_aggregate_comparison"]["avg"]["delta"])
 
     def test_zip_group_with_multiple_vtt_is_treated_as_combined_input(self):
         older_zip = build_zip(
@@ -295,6 +301,18 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(3, payload["newer_group"]["word_stats"]["min"])
         self.assertEqual(6, payload["newer_group"]["word_stats"]["max"])
         self.assertEqual(4.5, payload["newer_group"]["word_stats"]["avg"])
+        self.assertEqual(6, payload["word_aggregate_comparison"]["sum"]["older"])
+        self.assertEqual(9, payload["word_aggregate_comparison"]["sum"]["newer"])
+        self.assertEqual(3, payload["word_aggregate_comparison"]["sum"]["delta"])
+        self.assertEqual(2, payload["word_aggregate_comparison"]["min"]["older"])
+        self.assertEqual(3, payload["word_aggregate_comparison"]["min"]["newer"])
+        self.assertEqual(1, payload["word_aggregate_comparison"]["min"]["delta"])
+        self.assertEqual(4, payload["word_aggregate_comparison"]["max"]["older"])
+        self.assertEqual(6, payload["word_aggregate_comparison"]["max"]["newer"])
+        self.assertEqual(2, payload["word_aggregate_comparison"]["max"]["delta"])
+        self.assertEqual(3.0, payload["word_aggregate_comparison"]["avg"]["older"])
+        self.assertEqual(4.5, payload["word_aggregate_comparison"]["avg"]["newer"])
+        self.assertEqual(1.5, payload["word_aggregate_comparison"]["avg"]["delta"])
 
     def test_empty_single_files_are_accepted_and_reported(self):
         boundary = "----BoundaryEmptySingles"
@@ -336,6 +354,9 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(["newer-empty.txt"], payload["newer_group"]["empty_files"])
         self.assertEqual([0], payload["older_group"]["file_word_counts"])
         self.assertEqual([0], payload["newer_group"]["file_word_counts"])
+        self.assertEqual(0, payload["word_aggregate_comparison"]["sum"]["older"])
+        self.assertEqual(0, payload["word_aggregate_comparison"]["sum"]["newer"])
+        self.assertEqual(0, payload["word_aggregate_comparison"]["sum"]["delta"])
 
     def test_zip_with_only_empty_subtitle_files_is_reported(self):
         older_zip = build_zip({"a.vtt": "", "b.txt": "  \n"})
@@ -375,6 +396,9 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual([0], payload["newer_group"]["file_timestamp_counts"])
         self.assertEqual(1, payload["summary"]["empty_files_count"]["older"])
         self.assertEqual(1, payload["summary"]["empty_files_count"]["newer"])
+        self.assertEqual(0, payload["word_aggregate_comparison"]["avg"]["older"])
+        self.assertEqual(0, payload["word_aggregate_comparison"]["avg"]["newer"])
+        self.assertEqual(0, payload["word_aggregate_comparison"]["avg"]["delta"])
 
     def test_missing_group_field_returns_validation_error(self):
         boundary = "----BoundaryMissingGroup"

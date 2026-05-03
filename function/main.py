@@ -504,6 +504,17 @@ def summarize_words_per_file(word_counts: List[int]) -> Dict[str, float]:
     }
 
 
+def compare_aggregate_value(older_value: float, newer_value: float) -> Dict[str, float]:
+    delta = newer_value - older_value
+    if isinstance(older_value, float) or isinstance(newer_value, float):
+        delta = round(delta, 3)
+    return {
+        "older": older_value,
+        "newer": newer_value,
+        "delta": delta,
+    }
+
+
 def list_group_files(files: List[UploadedFile], accepted_field_names: Set[str]) -> List[UploadedFile]:
     return [item for item in files if item.field_name in accepted_field_names]
 
@@ -521,6 +532,12 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
 
     older_words = summarize_words_per_file(older_group.file_word_counts)
     newer_words = summarize_words_per_file(newer_group.file_word_counts)
+    word_aggregate_comparison = {
+        "sum": compare_aggregate_value(older_words["sum"], newer_words["sum"]),
+        "min": compare_aggregate_value(older_words["min"], newer_words["min"]),
+        "max": compare_aggregate_value(older_words["max"], newer_words["max"]),
+        "avg": compare_aggregate_value(older_words["avg"], newer_words["avg"]),
+    }
 
     return {
         "summary": {
@@ -567,12 +584,7 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
         },
         "removed_timestamps": format_timestamps(removed),
         "added_timestamps": format_timestamps(added),
-        "word_sum_delta": {
-            "sum": newer_words["sum"] - older_words["sum"],
-            "min": newer_words["min"] - older_words["min"],
-            "max": newer_words["max"] - older_words["max"],
-            "avg": round(newer_words["avg"] - older_words["avg"], 3),
-        },
+        "word_aggregate_comparison": word_aggregate_comparison,
     }
 
 

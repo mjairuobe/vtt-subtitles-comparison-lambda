@@ -89,15 +89,19 @@ HOME_PAGE_HTML = """<!doctype html>
         font-weight: 700;
         cursor: pointer;
       }
-      pre {
+      .hint {
+        color: #cbd5e1;
+      }
+      .box {
         border: 1px solid #334155;
         border-radius: 8px;
         background: #0f172a;
         padding: 1rem;
-        overflow: auto;
       }
-      .hint {
-        color: #cbd5e1;
+      code {
+        background: #111827;
+        border-radius: 4px;
+        padding: 0.1rem 0.35rem;
       }
     </style>
   </head>
@@ -106,11 +110,28 @@ HOME_PAGE_HTML = """<!doctype html>
       <section class="card">
         <h1>VTT Versionsvergleich</h1>
         <p>
-          Lade zwei Gruppen hoch: <strong>aeltere Version</strong> und
-          <strong>aktuellere Version</strong>. Pro Gruppe sind mehrere VTT/TXT-Dateien
-          oder ZIP-Dateien moeglich. Enthaltene VTT-Dateien in einem ZIP werden als
-          eine gemeinsame Datei behandelt.
+          Diese statische Seite beschreibt das Tool und bietet ein Uploadformular fuer
+          den Vergleich von Untertitelversionen.
         </p>
+        <div class="box">
+          <p>
+            Lade zwei Gruppen hoch: <strong>aeltere Version</strong> und
+            <strong>aktuellere Version</strong>.
+          </p>
+          <ul>
+            <li>Akzeptierte Formate: <code>.vtt</code>, <code>.txt</code>, <code>.zip</code></li>
+            <li>
+              ZIP-Dateien duerfen mehrere VTT/TXT enthalten und werden jeweils als
+              eine logische Datei innerhalb der Gruppe ausgewertet.
+            </li>
+            <li>Verglichen werden nur Start-/Endzeiten der Timestamps.</li>
+            <li>
+              Woerter werden pro logischer Datei ausgewertet und als
+              <code>sum</code>, <code>min</code>, <code>max</code>, <code>avg</code>
+              zusammengefasst.
+            </li>
+          </ul>
+        </div>
         <form id="compare-form" method="post" enctype="multipart/form-data">
           <label>
             Aeltere Version (older_files):
@@ -122,34 +143,12 @@ HOME_PAGE_HTML = """<!doctype html>
           </label>
           <button type="submit">Vergleich ausfuehren</button>
         </form>
-        <p class="hint">Antwortformat: JSON</p>
-        <pre id="result"></pre>
+        <p class="hint">
+          Das Formular sendet per <code>POST</code> an denselben Endpoint.
+          Die Antwort erfolgt als JSON.
+        </p>
       </section>
     </main>
-    <script>
-      (() => {
-        const form = document.getElementById("compare-form");
-        const result = document.getElementById("result");
-
-        form.addEventListener("submit", async (event) => {
-          event.preventDefault();
-          result.textContent = "Vergleiche Dateien ...";
-          try {
-            const response = await fetch(window.location.pathname, {
-              method: "POST",
-              body: new FormData(form),
-            });
-            const payload = await response.json();
-            if (!response.ok) {
-              throw new Error(payload.error || `Fehler (${response.status})`);
-            }
-            result.textContent = JSON.stringify(payload, null, 2);
-          } catch (error) {
-            result.textContent = `Fehler: ${error.message}`;
-          }
-        });
-      })();
-    </script>
   </body>
 </html>
 """
@@ -173,6 +172,9 @@ class UploadedFile:
 @dataclass
 class GroupAnalysis:
     cues: List[Cue]
+    file_word_counts: List[int]
+    file_timestamp_counts: List[int]
+    logical_file_names: List[str]
     source_file_count: int
     expanded_vtt_file_count: int
     uploaded_file_names: List[str]
@@ -277,6 +279,10 @@ def parse_text_file_to_cues(file_bytes: bytes, source_name: str) -> List[Cue]:
     if not cues:
         raise ValueError(f"{source_name}: no valid VTT timestamps found")
     return cues
+
+
+def count_words_in_cues(cues: List[Cue]) -> int:
+    return sum(len(WORD_RE.findall(" ".join(cue.text_lines))) for cue in cues)
 
 
 def read_cues_from_zip(zip_bytes: bytes, source_name: str) -> Tuple[List[Cue], int]:
@@ -411,6 +417,9 @@ def detect_http_method(event: Dict[str, object]) -> str:
 
 def analyze_group(group_label: str, files: Iterable[UploadedFile]) -> GroupAnalysis:
     cues: List[Cue] = []
+    file_word_counts: List[int] = []
+    file_timestamp_counts: List[int] = []
+    logical_file_names: List[str] = []
     source_file_count = 0
     expanded_vtt_file_count = 0
     uploaded_file_names: List[str] = []
@@ -425,6 +434,9 @@ def analyze_group(group_label: str, files: Iterable[UploadedFile]) -> GroupAnaly
         if is_zip:
             zip_cues, expanded_count = read_cues_from_zip(item.payload, item.file_name)
             cues.extend(zip_cues)
+            file_word_counts.append(count_words_in_cues(zip_cues))
+            file_timestamp_counts.append(len(zip_cues))
+            logical_file_names.append(item.file_name)
             expanded_vtt_file_count += expanded_count
             continue
 
@@ -436,6 +448,9 @@ def analyze_group(group_label: str, files: Iterable[UploadedFile]) -> GroupAnaly
 
         parsed_cues = parse_text_file_to_cues(item.payload, item.file_name)
         cues.extend(parsed_cues)
+        file_word_counts.append(count_words_in_cues(parsed_cues))
+        file_timestamp_counts.append(len(parsed_cues))
+        logical_file_names.append(item.file_name)
         expanded_vtt_file_count += 1
 
     if not cues:
@@ -445,6 +460,9 @@ def analyze_group(group_label: str, files: Iterable[UploadedFile]) -> GroupAnaly
 
     return GroupAnalysis(
         cues=cues,
+        file_word_counts=file_word_counts,
+        file_timestamp_counts=file_timestamp_counts,
+        logical_file_names=logical_file_names,
         source_file_count=source_file_count,
         expanded_vtt_file_count=expanded_vtt_file_count,
         uploaded_file_names=uploaded_file_names,
@@ -455,13 +473,7 @@ def timestamp_key(cue: Cue) -> Tuple[int, int]:
     return cue.start_ms, cue.end_ms
 
 
-def cue_word_count(cue: Cue) -> int:
-    text = " ".join(cue.text_lines)
-    return len(WORD_RE.findall(text))
-
-
-def summarize_words(cues: List[Cue]) -> Dict[str, float]:
-    word_counts = [cue_word_count(cue) for cue in cues]
+def summarize_words_per_file(word_counts: List[int]) -> Dict[str, float]:
     if not word_counts:
         return {"sum": 0, "min": 0, "max": 0, "avg": 0.0}
 
@@ -489,8 +501,8 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
     removed = sorted(older_keys - newer_keys)
     added = sorted(newer_keys - older_keys)
 
-    older_words = summarize_words(older_group.cues)
-    newer_words = summarize_words(newer_group.cues)
+    older_words = summarize_words_per_file(older_group.file_word_counts)
+    newer_words = summarize_words_per_file(newer_group.file_word_counts)
 
     return {
         "summary": {
@@ -509,12 +521,18 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
             "uploaded_file_count": older_group.source_file_count,
             "expanded_vtt_file_count": older_group.expanded_vtt_file_count,
             "uploaded_file_names": older_group.uploaded_file_names,
+            "logical_file_names": older_group.logical_file_names,
+            "file_timestamp_counts": older_group.file_timestamp_counts,
+            "file_word_counts": older_group.file_word_counts,
             "word_stats": older_words,
         },
         "newer_group": {
             "uploaded_file_count": newer_group.source_file_count,
             "expanded_vtt_file_count": newer_group.expanded_vtt_file_count,
             "uploaded_file_names": newer_group.uploaded_file_names,
+            "logical_file_names": newer_group.logical_file_names,
+            "file_timestamp_counts": newer_group.file_timestamp_counts,
+            "file_word_counts": newer_group.file_word_counts,
             "word_stats": newer_words,
         },
         "removed_timestamps": format_timestamps(removed),

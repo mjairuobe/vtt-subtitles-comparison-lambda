@@ -101,6 +101,8 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(["00:00:02.000 --> 00:00:03.000"], payload["added_timestamps"])
         self.assertEqual(4, payload["older_group"]["word_stats"]["sum"])
         self.assertEqual(4, payload["newer_group"]["word_stats"]["sum"])
+        self.assertEqual([4], payload["older_group"]["file_word_counts"])
+        self.assertEqual([4], payload["newer_group"]["file_word_counts"])
 
     def test_zip_group_with_multiple_vtt_is_treated_as_combined_input(self):
         older_zip = build_zip(
@@ -164,6 +166,10 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(2, payload["newer_group"]["expanded_vtt_file_count"])
         self.assertEqual(1, payload["summary"]["removed_timestamps_count"])
         self.assertEqual(1, payload["summary"]["added_timestamps_count"])
+        self.assertEqual([4], payload["older_group"]["file_word_counts"])
+        self.assertEqual([4], payload["newer_group"]["file_word_counts"])
+        self.assertEqual([2], payload["older_group"]["file_timestamp_counts"])
+        self.assertEqual([2], payload["newer_group"]["file_timestamp_counts"])
 
     def test_missing_webvtt_header_is_accepted_when_timestamps_exist(self):
         older_without_header = (
@@ -204,6 +210,91 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(0, payload["summary"]["added_timestamps_count"])
         self.assertEqual(1, payload["older_group"]["word_stats"]["sum"])
         self.assertEqual(2, payload["newer_group"]["word_stats"]["sum"])
+
+    def test_word_stats_are_calculated_per_logical_file(self):
+        older_zip = build_zip(
+            {
+                "one.vtt": (
+                    "WEBVTT\n\n"
+                    "00:00:00.000 --> 00:00:01.000\n"
+                    "eins zwei\n"
+                ),
+                "two.vtt": (
+                    "WEBVTT\n\n"
+                    "00:00:01.000 --> 00:00:02.000\n"
+                    "drei vier\n"
+                ),
+            }
+        )
+        newer_zip = build_zip(
+            {
+                "one.vtt": (
+                    "WEBVTT\n\n"
+                    "00:00:00.000 --> 00:00:01.000\n"
+                    "eins zwei drei\n"
+                ),
+                "two.vtt": (
+                    "WEBVTT\n\n"
+                    "00:00:01.000 --> 00:00:02.000\n"
+                    "vier fuenf sechs\n"
+                ),
+            }
+        )
+        boundary = "----BoundaryWordPerFile"
+        body = multipart_form_body(
+            boundary,
+            [
+                {
+                    "name": "older_files",
+                    "filename": "older.zip",
+                    "content_type": "application/zip",
+                    "payload": older_zip,
+                },
+                {
+                    "name": "older_files",
+                    "filename": "older-extra.vtt",
+                    "content_type": "text/vtt",
+                    "payload": (
+                        "WEBVTT\n\n"
+                        "00:00:02.000 --> 00:00:03.000\n"
+                        "extra alt\n"
+                    ),
+                },
+                {
+                    "name": "newer_files",
+                    "filename": "newer.zip",
+                    "content_type": "application/zip",
+                    "payload": newer_zip,
+                },
+                {
+                    "name": "newer_files",
+                    "filename": "newer-extra.vtt",
+                    "content_type": "text/vtt",
+                    "payload": (
+                        "WEBVTT\n\n"
+                        "00:00:02.000 --> 00:00:03.000\n"
+                        "extra neu neu\n"
+                    ),
+                },
+            ],
+        )
+        event = {
+            "headers": {"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            "isBase64Encoded": True,
+            "body": base64.b64encode(body).decode("ascii"),
+        }
+        result = handler(event, None)
+        self.assertEqual(200, result["statusCode"])
+        payload = json.loads(result["body"])
+
+        self.assertEqual([4, 2], payload["older_group"]["file_word_counts"])
+        self.assertEqual([6, 3], payload["newer_group"]["file_word_counts"])
+        self.assertEqual(2, payload["older_group"]["word_stats"]["min"])
+        self.assertEqual(4, payload["older_group"]["word_stats"]["max"])
+        self.assertEqual(3.0, payload["older_group"]["word_stats"]["avg"])
+        self.assertEqual(3, payload["newer_group"]["word_stats"]["min"])
+        self.assertEqual(6, payload["newer_group"]["word_stats"]["max"])
+        self.assertEqual(4.5, payload["newer_group"]["word_stats"]["avg"])
 
     def test_missing_group_field_returns_validation_error(self):
         boundary = "----BoundaryMissingGroup"

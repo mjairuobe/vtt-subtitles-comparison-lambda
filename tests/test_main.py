@@ -47,6 +47,8 @@ class VttComparisonTests(unittest.TestCase):
         self.assertIn("text/html", result["headers"]["Content-Type"])
         self.assertIn("older_files", result["body"])
         self.assertIn("newer_files", result["body"])
+        self.assertIn("Übersicht", result["body"])
+        self.assertIn("Wortstatistik pro Zeitstempel", result["body"])
 
     def test_compare_two_single_vtt_files(self):
         older_vtt = (
@@ -101,13 +103,17 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(["00:00:02.000 --> 00:00:03.000"], payload["added_timestamps"])
         self.assertEqual(4, payload["older_group"]["word_stats"]["sum"])
         self.assertEqual(4, payload["newer_group"]["word_stats"]["sum"])
+        self.assertEqual(2, payload["older_group"]["word_stats"]["max"])
+        self.assertEqual(2, payload["newer_group"]["word_stats"]["max"])
+        self.assertEqual(2.0, payload["older_group"]["word_stats"]["avg"])
+        self.assertEqual(2.0, payload["newer_group"]["word_stats"]["avg"])
         self.assertEqual([4], payload["older_group"]["file_word_counts"])
         self.assertEqual([4], payload["newer_group"]["file_word_counts"])
         self.assertEqual(4, payload["word_aggregate_comparison"]["sum"]["older"])
         self.assertEqual(4, payload["word_aggregate_comparison"]["sum"]["newer"])
         self.assertEqual(0, payload["word_aggregate_comparison"]["sum"]["delta"])
-        self.assertEqual(4.0, payload["word_aggregate_comparison"]["avg"]["older"])
-        self.assertEqual(4.0, payload["word_aggregate_comparison"]["avg"]["newer"])
+        self.assertEqual(2.0, payload["word_aggregate_comparison"]["avg"]["older"])
+        self.assertEqual(2.0, payload["word_aggregate_comparison"]["avg"]["newer"])
         self.assertEqual(0.0, payload["word_aggregate_comparison"]["avg"]["delta"])
 
     def test_zip_group_with_multiple_vtt_is_treated_as_combined_input(self):
@@ -216,6 +222,8 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(0, payload["summary"]["added_timestamps_count"])
         self.assertEqual(1, payload["older_group"]["word_stats"]["sum"])
         self.assertEqual(2, payload["newer_group"]["word_stats"]["sum"])
+        self.assertEqual(1, payload["older_group"]["word_stats"]["avg"])
+        self.assertEqual(2, payload["newer_group"]["word_stats"]["avg"])
 
     def test_word_stats_are_calculated_per_logical_file(self):
         older_zip = build_zip(
@@ -296,23 +304,23 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual([4, 2], payload["older_group"]["file_word_counts"])
         self.assertEqual([6, 3], payload["newer_group"]["file_word_counts"])
         self.assertEqual(2, payload["older_group"]["word_stats"]["min"])
-        self.assertEqual(4, payload["older_group"]["word_stats"]["max"])
-        self.assertEqual(3.0, payload["older_group"]["word_stats"]["avg"])
+        self.assertEqual(2, payload["older_group"]["word_stats"]["max"])
+        self.assertEqual(2.0, payload["older_group"]["word_stats"]["avg"])
         self.assertEqual(3, payload["newer_group"]["word_stats"]["min"])
-        self.assertEqual(6, payload["newer_group"]["word_stats"]["max"])
-        self.assertEqual(4.5, payload["newer_group"]["word_stats"]["avg"])
+        self.assertEqual(3, payload["newer_group"]["word_stats"]["max"])
+        self.assertEqual(3.0, payload["newer_group"]["word_stats"]["avg"])
         self.assertEqual(6, payload["word_aggregate_comparison"]["sum"]["older"])
         self.assertEqual(9, payload["word_aggregate_comparison"]["sum"]["newer"])
         self.assertEqual(3, payload["word_aggregate_comparison"]["sum"]["delta"])
         self.assertEqual(2, payload["word_aggregate_comparison"]["min"]["older"])
         self.assertEqual(3, payload["word_aggregate_comparison"]["min"]["newer"])
         self.assertEqual(1, payload["word_aggregate_comparison"]["min"]["delta"])
-        self.assertEqual(4, payload["word_aggregate_comparison"]["max"]["older"])
-        self.assertEqual(6, payload["word_aggregate_comparison"]["max"]["newer"])
-        self.assertEqual(2, payload["word_aggregate_comparison"]["max"]["delta"])
-        self.assertEqual(3.0, payload["word_aggregate_comparison"]["avg"]["older"])
-        self.assertEqual(4.5, payload["word_aggregate_comparison"]["avg"]["newer"])
-        self.assertEqual(1.5, payload["word_aggregate_comparison"]["avg"]["delta"])
+        self.assertEqual(2, payload["word_aggregate_comparison"]["max"]["older"])
+        self.assertEqual(3, payload["word_aggregate_comparison"]["max"]["newer"])
+        self.assertEqual(1, payload["word_aggregate_comparison"]["max"]["delta"])
+        self.assertEqual(2.0, payload["word_aggregate_comparison"]["avg"]["older"])
+        self.assertEqual(3.0, payload["word_aggregate_comparison"]["avg"]["newer"])
+        self.assertEqual(1.0, payload["word_aggregate_comparison"]["avg"]["delta"])
 
     def test_empty_single_files_are_accepted_and_reported(self):
         boundary = "----BoundaryEmptySingles"

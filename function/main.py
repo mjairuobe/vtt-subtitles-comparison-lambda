@@ -186,12 +186,31 @@ HOME_PAGE_HTML = """<!doctype html>
           grid-template-columns: 1fr;
         }
       }
+      @media (max-width: 640px) {
+        main {
+          padding: 1rem 0.75rem 2rem;
+        }
+        .card {
+          padding: 0.8rem;
+        }
+        .actions {
+          flex-direction: column;
+        }
+        .actions button {
+          width: 100%;
+        }
+        .metric-table {
+          display: block;
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+      }
     </style>
   </head>
   <body>
     <main class="stack">
       <section class="card stack">
-        <h1>VTT Vergleichsfrontend</h1>
+        <h1>VTT-Vergleichsfrontend</h1>
         <p class="hint">
           Standardansicht ist die UI. Du kannst hier zwei Versionen direkt vergleichen
           und das JSON jederzeit herunterladen.
@@ -199,18 +218,18 @@ HOME_PAGE_HTML = """<!doctype html>
         <ul>
           <li>Felder: <code>older_files</code> und <code>newer_files</code></li>
           <li>Formate: <code>.vtt</code>, <code>.txt</code>, <code>.zip</code></li>
-          <li>Timestamps werden ueber Start/Ende verglichen</li>
-          <li>Gruppenvergleich fuer <code>sum/min/max/avg</code> ist enthalten</li>
+          <li>Zeitstempel werden über Start/Ende verglichen</li>
+          <li>Gruppenvergleich für <code>sum/min/max/avg</code> ist enthalten</li>
           <li>Leere Dateien werden explizit gelistet</li>
         </ul>
       </section>
 
       <section class="card stack">
-        <h2>Upload</h2>
+        <h2>Dateien hochladen</h2>
         <form id="compare-form" method="post" enctype="multipart/form-data">
           <div class="upload-grid">
             <label class="upload-field">
-              Aeltere Version (older_files)
+              Ältere Version (older_files)
               <input name="older_files" type="file" accept=".vtt,.txt,.zip" multiple required />
             </label>
             <label class="upload-field">
@@ -240,7 +259,7 @@ HOME_PAGE_HTML = """<!doctype html>
       <section class="card stack" id="comparison-panel">
         <h2>Vergleich</h2>
         <div id="comparison-content" class="hint">
-          Noch kein Vergleich ausgefuehrt.
+          Noch kein Vergleich durchgeführt.
         </div>
       </section>
     </main>
@@ -316,7 +335,7 @@ HOME_PAGE_HTML = """<!doctype html>
             <table class="metric-table">
               <tbody>
                 <tr><th>Hochgeladene Dateien</th><td>${safeGroup.uploaded_file_count}</td></tr>
-                <tr><th>Expandierte VTT-Dateien</th><td>${safeGroup.expanded_vtt_file_count}</td></tr>
+                <tr><th>Erkannte Untertiteldateien (VTT/TXT)</th><td>${safeGroup.expanded_vtt_file_count}</td></tr>
                 <tr><th>Leere Dateien</th><td>${safeGroup.empty_files.length}</td></tr>
               </tbody>
             </table>
@@ -335,33 +354,39 @@ HOME_PAGE_HTML = """<!doctype html>
         const renderComparison = (payload) => {
           const agg = payload.word_aggregate_comparison || {};
           const ts = payload.summary || {};
+          const aggregateRows = [
+            { key: "sum", label: "Summe aller Wörter über alle Zeitstempel" },
+            { key: "min", label: "Minimale Wörteranzahl pro Zeitstempel" },
+            { key: "max", label: "Maximale Wörteranzahl pro Zeitstempel" },
+            { key: "avg", label: "Durchschnittliche Wörteranzahl pro Zeitstempel" },
+          ];
 
           comparisonContent.innerHTML = `
             <section class="stack">
-              <h3>Uebersicht</h3>
+              <h3>Übersicht</h3>
               <table class="metric-table">
                 <thead>
-                  <tr><th>Metrik</th><th>Aelter</th><th>Neuer</th><th>Delta</th></tr>
+                  <tr><th>Metrik</th><th>Älter</th><th>Neuer</th><th>Delta</th></tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <th>Timestamp Count</th>
+                    <th>Zeitstempel gesamt</th>
                     <td>${ts.timestamp_count?.older ?? 0}</td>
                     <td>${ts.timestamp_count?.newer ?? 0}</td>
                     <td>${deltaTag((ts.timestamp_count?.newer ?? 0) - (ts.timestamp_count?.older ?? 0))}</td>
                   </tr>
                   <tr>
-                    <th>Unique Timestamps</th>
+                    <th>Eindeutige Zeitstempel</th>
                     <td>${ts.unique_timestamp_count?.older ?? 0}</td>
                     <td>${ts.unique_timestamp_count?.newer ?? 0}</td>
                     <td>${deltaTag((ts.unique_timestamp_count?.newer ?? 0) - (ts.unique_timestamp_count?.older ?? 0))}</td>
                   </tr>
                   <tr>
-                    <th>Entfernte Timestamps</th>
+                    <th>Weggefallene Zeitstempel</th>
                     <td colspan="3">${ts.removed_timestamps_count ?? 0}</td>
                   </tr>
                   <tr>
-                    <th>Hinzugefuegte Timestamps</th>
+                    <th>Hinzugefügte Zeitstempel</th>
                     <td colspan="3">${ts.added_timestamps_count ?? 0}</td>
                   </tr>
                 </tbody>
@@ -369,18 +394,18 @@ HOME_PAGE_HTML = """<!doctype html>
             </section>
 
             <section class="stack">
-              <h3>Aggregatvergleich (sum/min/max/avg)</h3>
+              <h3>Wortstatistik pro Zeitstempel (Gruppenvergleich)</h3>
               <table class="metric-table">
                 <thead>
-                  <tr><th>Aggregat</th><th>Aelter</th><th>Neuer</th><th>Delta</th></tr>
+                  <tr><th>Kennzahl</th><th>Älter</th><th>Neuer</th><th>Delta</th></tr>
                 </thead>
                 <tbody>
-                  ${["sum", "min", "max", "avg"].map((name) => `
+                  ${aggregateRows.map((row) => `
                     <tr>
-                      <th>${name}</th>
-                      <td>${formatValue(agg[name]?.older ?? 0)}</td>
-                      <td>${formatValue(agg[name]?.newer ?? 0)}</td>
-                      <td>${deltaTag(agg[name]?.delta ?? 0)}</td>
+                      <th>${row.label}</th>
+                      <td>${formatValue(agg[row.key]?.older ?? 0)}</td>
+                      <td>${formatValue(agg[row.key]?.newer ?? 0)}</td>
+                      <td>${deltaTag(agg[row.key]?.delta ?? 0)}</td>
                     </tr>
                   `).join("")}
                 </tbody>
@@ -388,17 +413,17 @@ HOME_PAGE_HTML = """<!doctype html>
             </section>
 
             <section class="grid-2">
-              ${renderGroupDetails("Aeltere Gruppe", payload.older_group || {})}
+              ${renderGroupDetails("Ältere Gruppe", payload.older_group || {})}
               ${renderGroupDetails("Neuere Gruppe", payload.newer_group || {})}
             </section>
 
             <section class="grid-2">
               <div class="card stack">
-                <h3>Weggefallene Timestamps</h3>
+                <h3>Weggefallene Zeitstempel</h3>
                 <div class="list-box">${listItems(payload.removed_timestamps, "Keine")}</div>
               </div>
               <div class="card stack">
-                <h3>Hinzugefuegte Timestamps</h3>
+                <h3>Hinzugefügte Zeitstempel</h3>
                 <div class="list-box">${listItems(payload.added_timestamps, "Keine")}</div>
               </div>
             </section>
@@ -408,7 +433,7 @@ HOME_PAGE_HTML = """<!doctype html>
         templateDownloadButton.addEventListener("click", () => {
           const example = {
             request_fields: ["older_files", "newer_files"],
-            description: "Beispielhafte Struktur fuer Request/Response.",
+            description: "Beispielhafte Struktur für Request/Response.",
             response_fields: [
               "summary.timestamp_count",
               "summary.unique_timestamp_count",
@@ -434,7 +459,7 @@ HOME_PAGE_HTML = """<!doctype html>
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
           statusNode.className = "status";
-          statusNode.textContent = "Vergleich laeuft...";
+          statusNode.textContent = "Vergleich läuft...";
           submitButton.disabled = true;
 
           try {
@@ -802,10 +827,15 @@ def timestamp_key(cue: Cue) -> Tuple[int, int]:
     return cue.start_ms, cue.end_ms
 
 
-def summarize_words_per_file(word_counts: List[int]) -> Dict[str, float]:
-    if not word_counts:
+def cue_word_count(cue: Cue) -> int:
+    return len(WORD_RE.findall(" ".join(cue.text_lines)))
+
+
+def summarize_words_per_timestamp(cues: List[Cue]) -> Dict[str, float]:
+    if not cues:
         return {"sum": 0, "min": 0, "max": 0, "avg": 0.0}
 
+    word_counts = [cue_word_count(cue) for cue in cues]
     total_words = sum(word_counts)
     return {
         "sum": total_words,
@@ -841,13 +871,21 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
     removed = sorted(older_keys - newer_keys)
     added = sorted(newer_keys - older_keys)
 
-    older_words = summarize_words_per_file(older_group.file_word_counts)
-    newer_words = summarize_words_per_file(newer_group.file_word_counts)
+    older_words_per_timestamp = summarize_words_per_timestamp(older_group.cues)
+    newer_words_per_timestamp = summarize_words_per_timestamp(newer_group.cues)
     word_aggregate_comparison = {
-        "sum": compare_aggregate_value(older_words["sum"], newer_words["sum"]),
-        "min": compare_aggregate_value(older_words["min"], newer_words["min"]),
-        "max": compare_aggregate_value(older_words["max"], newer_words["max"]),
-        "avg": compare_aggregate_value(older_words["avg"], newer_words["avg"]),
+        "sum": compare_aggregate_value(
+            older_words_per_timestamp["sum"], newer_words_per_timestamp["sum"]
+        ),
+        "min": compare_aggregate_value(
+            older_words_per_timestamp["min"], newer_words_per_timestamp["min"]
+        ),
+        "max": compare_aggregate_value(
+            older_words_per_timestamp["max"], newer_words_per_timestamp["max"]
+        ),
+        "avg": compare_aggregate_value(
+            older_words_per_timestamp["avg"], newer_words_per_timestamp["avg"]
+        ),
     }
 
     return {
@@ -878,7 +916,8 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
             "logical_file_names": older_group.logical_file_names,
             "file_timestamp_counts": older_group.file_timestamp_counts,
             "file_word_counts": older_group.file_word_counts,
-            "word_stats": older_words,
+            "word_stats": older_words_per_timestamp,
+            "word_stats_per_timestamp": older_words_per_timestamp,
             "empty_files": older_group.empty_file_names,
             "empty_logical_file_names": older_group.empty_logical_file_names,
         },
@@ -889,7 +928,8 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
             "logical_file_names": newer_group.logical_file_names,
             "file_timestamp_counts": newer_group.file_timestamp_counts,
             "file_word_counts": newer_group.file_word_counts,
-            "word_stats": newer_words,
+            "word_stats": newer_words_per_timestamp,
+            "word_stats_per_timestamp": newer_words_per_timestamp,
             "empty_files": newer_group.empty_file_names,
             "empty_logical_file_names": newer_group.empty_logical_file_names,
         },

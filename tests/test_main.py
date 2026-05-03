@@ -296,6 +296,86 @@ class VttComparisonTests(unittest.TestCase):
         self.assertEqual(6, payload["newer_group"]["word_stats"]["max"])
         self.assertEqual(4.5, payload["newer_group"]["word_stats"]["avg"])
 
+    def test_empty_single_files_are_accepted_and_reported(self):
+        boundary = "----BoundaryEmptySingles"
+        body = multipart_form_body(
+            boundary,
+            [
+                {
+                    "name": "older_files",
+                    "filename": "older-empty.vtt",
+                    "content_type": "text/vtt",
+                    "payload": "",
+                },
+                {
+                    "name": "newer_files",
+                    "filename": "newer-empty.txt",
+                    "content_type": "text/plain",
+                    "payload": "   \n\n",
+                },
+            ],
+        )
+        event = {
+            "headers": {"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            "isBase64Encoded": True,
+            "body": base64.b64encode(body).decode("ascii"),
+        }
+        result = handler(event, None)
+        self.assertEqual(200, result["statusCode"])
+        payload = json.loads(result["body"])
+
+        self.assertEqual(0, payload["summary"]["timestamp_count"]["older"])
+        self.assertEqual(0, payload["summary"]["timestamp_count"]["newer"])
+        self.assertEqual(
+            1, payload["summary"]["empty_files_count"]["older"]
+        )
+        self.assertEqual(
+            1, payload["summary"]["empty_files_count"]["newer"]
+        )
+        self.assertEqual(["older-empty.vtt"], payload["older_group"]["empty_files"])
+        self.assertEqual(["newer-empty.txt"], payload["newer_group"]["empty_files"])
+        self.assertEqual([0], payload["older_group"]["file_word_counts"])
+        self.assertEqual([0], payload["newer_group"]["file_word_counts"])
+
+    def test_zip_with_only_empty_subtitle_files_is_reported(self):
+        older_zip = build_zip({"a.vtt": "", "b.txt": "  \n"})
+        newer_zip = build_zip({"n1.vtt": "", "n2.txt": "\n"})
+        boundary = "----BoundaryEmptyZip"
+        body = multipart_form_body(
+            boundary,
+            [
+                {
+                    "name": "older_files",
+                    "filename": "older.zip",
+                    "content_type": "application/zip",
+                    "payload": older_zip,
+                },
+                {
+                    "name": "newer_files",
+                    "filename": "newer.zip",
+                    "content_type": "application/zip",
+                    "payload": newer_zip,
+                },
+            ],
+        )
+        event = {
+            "headers": {"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            "isBase64Encoded": True,
+            "body": base64.b64encode(body).decode("ascii"),
+        }
+        result = handler(event, None)
+        self.assertEqual(200, result["statusCode"])
+        payload = json.loads(result["body"])
+
+        self.assertEqual(["older.zip:a.vtt", "older.zip:b.txt"], payload["older_group"]["empty_files"])
+        self.assertEqual(["newer.zip:n1.vtt", "newer.zip:n2.txt"], payload["newer_group"]["empty_files"])
+        self.assertEqual(["older.zip"], payload["older_group"]["empty_logical_file_names"])
+        self.assertEqual(["newer.zip"], payload["newer_group"]["empty_logical_file_names"])
+        self.assertEqual([0], payload["older_group"]["file_timestamp_counts"])
+        self.assertEqual([0], payload["newer_group"]["file_timestamp_counts"])
+        self.assertEqual(1, payload["summary"]["empty_files_count"]["older"])
+        self.assertEqual(1, payload["summary"]["empty_files_count"]["newer"])
+
     def test_missing_group_field_returns_validation_error(self):
         boundary = "----BoundaryMissingGroup"
         body = multipart_form_body(

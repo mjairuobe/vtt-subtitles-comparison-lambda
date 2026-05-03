@@ -14,6 +14,7 @@ AWS Lambda (Python 3.11) zum Vergleich von zwei Gruppen an Untertiteldateien.
 - Jede hochgeladene Datei ist eine logische Vergleichseinheit:
   - normale `.vtt`/`.txt` Datei = 1 logische Datei
   - `.zip` Datei = 1 logische Datei (enthaelt mehrere VTT/TXT, intern zusammengefuehrt)
+- Leere einzelne `.vtt`/`.txt` Dateien sind erlaubt und werden im Ergebnis explizit aufgefuehrt.
 - Fehlender `WEBVTT`-Header wird toleriert, sofern gueltige Timing-Zeilen vorhanden sind.
 
 ## Vergleichsmetriken
@@ -25,6 +26,7 @@ Die API liefert:
 - hinzugefuegte Timestamps
 - Woerter-Statistik pro Gruppe (`sum`, `min`, `max`, `avg`) **pro logischer Datei**
 - Delta zwischen neuer und alter Version fuer die Woerter-Statistik
+- Informationen zu leeren Dateien (`empty_files`, `empty_logical_file_names`, `empty_files_count`)
 
 ## Lokales Testen
 

@@ -175,6 +175,8 @@ class GroupAnalysis:
     file_word_counts: List[int]
     file_timestamp_counts: List[int]
     logical_file_names: List[str]
+    empty_file_names: List[str]
+    empty_logical_file_names: List[str]
     source_file_count: int
     expanded_vtt_file_count: int
     uploaded_file_names: List[str]
@@ -269,25 +271,29 @@ def parse_vtt(vtt_text: str) -> List[Cue]:
     return cues
 
 
-def parse_text_file_to_cues(file_bytes: bytes, source_name: str) -> List[Cue]:
+def parse_text_file_to_cues(file_bytes: bytes, source_name: str) -> Tuple[List[Cue], bool]:
     try:
         text = file_bytes.decode("utf-8-sig")
     except UnicodeDecodeError:
         raise ValueError(f"{source_name}: only UTF-8 encoded files are supported")
 
+    if not text.strip():
+        return [], True
+
     cues = parse_vtt(text)
     if not cues:
         raise ValueError(f"{source_name}: no valid VTT timestamps found")
-    return cues
+    return cues, False
 
 
 def count_words_in_cues(cues: List[Cue]) -> int:
     return sum(len(WORD_RE.findall(" ".join(cue.text_lines))) for cue in cues)
 
 
-def read_cues_from_zip(zip_bytes: bytes, source_name: str) -> Tuple[List[Cue], int]:
+def read_cues_from_zip(zip_bytes: bytes, source_name: str) -> Tuple[List[Cue], int, List[str]]:
     cues: List[Cue] = []
     expanded_files = 0
+    empty_file_names: List[str] = []
 
     try:
         with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as archive:
@@ -298,7 +304,12 @@ def read_cues_from_zip(zip_bytes: bytes, source_name: str) -> Tuple[List[Cue], i
                 if not lowered_name.endswith(SUPPORTED_TEXT_SUFFIXES):
                     continue
                 file_bytes = archive.read(info)
-                cues.extend(parse_text_file_to_cues(file_bytes, f"{source_name}:{info.filename}"))
+                parsed_cues, is_empty = parse_text_file_to_cues(
+                    file_bytes, f"{source_name}:{info.filename}"
+                )
+                cues.extend(parsed_cues)
+                if is_empty:
+                    empty_file_names.append(f"{source_name}:{info.filename}")
                 expanded_files += 1
     except zipfile.BadZipFile as exc:
         raise ValueError(f"{source_name}: invalid ZIP archive") from exc
@@ -308,7 +319,7 @@ def read_cues_from_zip(zip_bytes: bytes, source_name: str) -> Tuple[List[Cue], i
             f"{source_name}: ZIP must contain at least one .vtt or .txt subtitle file"
         )
 
-    return cues, expanded_files
+    return cues, expanded_files, empty_file_names
 
 
 def parse_multipart_form(body: bytes, content_type: str) -> Tuple[Dict[str, str], List[UploadedFile]]:
@@ -420,6 +431,8 @@ def analyze_group(group_label: str, files: Iterable[UploadedFile]) -> GroupAnaly
     file_word_counts: List[int] = []
     file_timestamp_counts: List[int] = []
     logical_file_names: List[str] = []
+    empty_file_names: List[str] = []
+    empty_logical_file_names: List[str] = []
     source_file_count = 0
     expanded_vtt_file_count = 0
     uploaded_file_names: List[str] = []
@@ -432,11 +445,16 @@ def analyze_group(group_label: str, files: Iterable[UploadedFile]) -> GroupAnaly
         is_zip = lowered_name.endswith(".zip") or "zip" in item.content_type
 
         if is_zip:
-            zip_cues, expanded_count = read_cues_from_zip(item.payload, item.file_name)
+            zip_cues, expanded_count, zip_empty_files = read_cues_from_zip(
+                item.payload, item.file_name
+            )
             cues.extend(zip_cues)
             file_word_counts.append(count_words_in_cues(zip_cues))
             file_timestamp_counts.append(len(zip_cues))
             logical_file_names.append(item.file_name)
+            empty_file_names.extend(zip_empty_files)
+            if not zip_cues:
+                empty_logical_file_names.append(item.file_name)
             expanded_vtt_file_count += expanded_count
             continue
 
@@ -446,23 +464,23 @@ def analyze_group(group_label: str, files: Iterable[UploadedFile]) -> GroupAnaly
                 "Use .vtt, .txt or .zip."
             )
 
-        parsed_cues = parse_text_file_to_cues(item.payload, item.file_name)
+        parsed_cues, is_empty_file = parse_text_file_to_cues(item.payload, item.file_name)
         cues.extend(parsed_cues)
         file_word_counts.append(count_words_in_cues(parsed_cues))
         file_timestamp_counts.append(len(parsed_cues))
         logical_file_names.append(item.file_name)
+        if is_empty_file:
+            empty_file_names.append(item.file_name)
+            empty_logical_file_names.append(item.file_name)
         expanded_vtt_file_count += 1
-
-    if not cues:
-        raise ValueError(
-            f"{group_label}: no valid subtitles were provided in uploaded files"
-        )
 
     return GroupAnalysis(
         cues=cues,
         file_word_counts=file_word_counts,
         file_timestamp_counts=file_timestamp_counts,
         logical_file_names=logical_file_names,
+        empty_file_names=empty_file_names,
+        empty_logical_file_names=empty_logical_file_names,
         source_file_count=source_file_count,
         expanded_vtt_file_count=expanded_vtt_file_count,
         uploaded_file_names=uploaded_file_names,
@@ -516,6 +534,14 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
             },
             "removed_timestamps_count": len(removed),
             "added_timestamps_count": len(added),
+            "empty_files_count": {
+                "older": len(older_group.empty_logical_file_names),
+                "newer": len(newer_group.empty_logical_file_names),
+            },
+            "empty_subtitle_files_count": {
+                "older": len(older_group.empty_file_names),
+                "newer": len(newer_group.empty_file_names),
+            },
         },
         "older_group": {
             "uploaded_file_count": older_group.source_file_count,
@@ -525,6 +551,8 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
             "file_timestamp_counts": older_group.file_timestamp_counts,
             "file_word_counts": older_group.file_word_counts,
             "word_stats": older_words,
+            "empty_files": older_group.empty_file_names,
+            "empty_logical_file_names": older_group.empty_logical_file_names,
         },
         "newer_group": {
             "uploaded_file_count": newer_group.source_file_count,
@@ -534,6 +562,8 @@ def compare_groups(older_group: GroupAnalysis, newer_group: GroupAnalysis) -> Di
             "file_timestamp_counts": newer_group.file_timestamp_counts,
             "file_word_counts": newer_group.file_word_counts,
             "word_stats": newer_words,
+            "empty_files": newer_group.empty_file_names,
+            "empty_logical_file_names": newer_group.empty_logical_file_names,
         },
         "removed_timestamps": format_timestamps(removed),
         "added_timestamps": format_timestamps(added),
